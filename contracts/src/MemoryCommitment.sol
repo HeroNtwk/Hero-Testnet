@@ -68,6 +68,7 @@ contract MemoryCommitment {
         uint256 sequenceNumber,
         bytes32 contentHash
     ) external view returns (bool valid) {
+        require(sequenceNumber < latestSequence[agentId], "MemoryCommitment: invalid sequence number");
         return memories[agentId][sequenceNumber].contentHash == contentHash;
     }
 

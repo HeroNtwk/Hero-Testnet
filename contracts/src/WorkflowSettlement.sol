@@ -29,6 +29,7 @@ contract WorkflowSettlement {
 
     uint256 public workflowCount;
     mapping(uint256 => Workflow) public workflows;
+    mapping(bytes32 => address) public agentOwners;
 
     event WorkflowRequested(uint256 indexed workflowId, bytes32 indexed requesterId, bytes32 taskHash, uint256 escrowAmount);
     event WorkflowExecutorAssigned(uint256 indexed workflowId, bytes32 indexed executorId);
@@ -47,9 +48,15 @@ contract WorkflowSettlement {
         bytes32 taskHash,
         bytes32 inputCommitment
     ) external payable returns (uint256 workflowId) {
-        // TODO: Verify requesterId via AgentRegistry
         require(msg.value > 0, "WorkflowSettlement: escrow required");
         require(taskHash != bytes32(0), "WorkflowSettlement: empty task hash");
+
+        // Register caller as agent owner for access control
+        // TODO: Replace with AgentRegistry lookup once integrated
+        if (agentOwners[requesterId] == address(0)) {
+            agentOwners[requesterId] = msg.sender;
+        }
+        require(agentOwners[requesterId] == msg.sender, "WorkflowSettlement: not agent owner");
 
         workflowId = workflowCount;
         workflows[workflowId] = Workflow({
@@ -73,10 +80,10 @@ contract WorkflowSettlement {
     /// @param workflowId The workflow to assign
     /// @param executorId The agent that will execute the task
     function assignExecutor(uint256 workflowId, bytes32 executorId) external {
-        // TODO: Verify executorId via AgentRegistry
         Workflow storage wf = workflows[workflowId];
         require(wf.status == WorkflowStatus.Requested, "WorkflowSettlement: invalid status");
         require(executorId != bytes32(0), "WorkflowSettlement: invalid executor");
+        require(agentOwners[wf.requesterId] == msg.sender, "WorkflowSettlement: only requester can assign");
 
         wf.executorId = executorId;
         wf.status = WorkflowStatus.Executing;
@@ -95,6 +102,7 @@ contract WorkflowSettlement {
         Workflow storage wf = workflows[workflowId];
         require(wf.status == WorkflowStatus.Executing, "WorkflowSettlement: invalid status");
         require(attestationHash != bytes32(0), "WorkflowSettlement: empty attestation");
+        // TODO: Restrict to executor's owner via AgentRegistry once integrated
 
         wf.attestationHash = attestationHash;
         wf.outputCommitment = outputCommitment;
@@ -106,9 +114,12 @@ contract WorkflowSettlement {
     /// @param workflowId The workflow to settle
     /// @param executorOwner The address to receive the escrow payment
     function settleWorkflow(uint256 workflowId, address payable executorOwner) external {
-        // TODO: Verify caller authorization and executor ownership via AgentRegistry
         Workflow storage wf = workflows[workflowId];
         require(wf.status == WorkflowStatus.Attested, "WorkflowSettlement: not attested");
+        require(
+            agentOwners[wf.requesterId] == msg.sender || agentOwners[wf.executorId] == msg.sender,
+            "WorkflowSettlement: unauthorized caller"
+        );
 
         uint256 amount = wf.escrowAmount;
         wf.status = WorkflowStatus.Settled;
@@ -134,6 +145,7 @@ contract WorkflowSettlement {
     function cancelWorkflow(uint256 workflowId, address payable refundAddress) external {
         Workflow storage wf = workflows[workflowId];
         require(wf.status == WorkflowStatus.Requested, "WorkflowSettlement: cannot cancel");
+        require(agentOwners[wf.requesterId] == msg.sender, "WorkflowSettlement: only requester can cancel");
 
         uint256 amount = wf.escrowAmount;
         wf.status = WorkflowStatus.Cancelled;

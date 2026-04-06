@@ -114,4 +114,36 @@ contract WorkflowSettlementTest is Test {
 
         assertEq(settlement.workflowCount(), 2);
     }
+
+    function testUnauthorizedCannotCancel() public {
+        uint256 workflowId = settlement.requestWorkflow{value: 1 ether}(
+            requesterId, taskHash, inputCommitment
+        );
+
+        vm.prank(address(0x99));
+        vm.expectRevert("WorkflowSettlement: only requester can cancel");
+        settlement.cancelWorkflow(workflowId, payable(address(0x99)));
+    }
+
+    function testUnauthorizedCannotSettle() public {
+        uint256 workflowId = settlement.requestWorkflow{value: 1 ether}(
+            requesterId, taskHash, inputCommitment
+        );
+        settlement.assignExecutor(workflowId, executorId);
+        settlement.submitAttestation(workflowId, keccak256("proof"), keccak256("output"));
+
+        vm.prank(address(0x99));
+        vm.expectRevert("WorkflowSettlement: unauthorized caller");
+        settlement.settleWorkflow(workflowId, payable(address(0x99)));
+    }
+
+    function testUnauthorizedCannotAssignExecutor() public {
+        uint256 workflowId = settlement.requestWorkflow{value: 1 ether}(
+            requesterId, taskHash, inputCommitment
+        );
+
+        vm.prank(address(0x99));
+        vm.expectRevert("WorkflowSettlement: only requester can assign");
+        settlement.assignExecutor(workflowId, executorId);
+    }
 }

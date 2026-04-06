@@ -123,4 +123,25 @@ contract AgentRegistryTest is Test {
         assertEq(agentIds[0], agentId);
         assertEq(agentIds[1], agentId2);
     }
+
+    function testCannotDelegateToZeroAddress() public {
+        vm.prank(alice);
+        registry.registerAgent(agentId, metadataHash);
+
+        vm.prank(alice);
+        vm.expectRevert("AgentRegistry: delegate is zero address");
+        registry.createDelegation(agentId, address(0), keccak256("execute"), block.timestamp + 1 days);
+    }
+
+    function testCannotDelegateOnInactiveAgent() public {
+        vm.prank(alice);
+        registry.registerAgent(agentId, metadataHash);
+
+        vm.prank(alice);
+        registry.deactivateAgent(agentId);
+
+        vm.prank(alice);
+        vm.expectRevert("AgentRegistry: agent is inactive");
+        registry.createDelegation(agentId, bob, keccak256("execute"), block.timestamp + 1 days);
+    }
 }

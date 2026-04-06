@@ -107,4 +107,9 @@ contract MemoryCommitmentTest is Test {
         memory_.commitMemory(agentId, keccak256("content-2"), keccak256("root-2"), embeddingRef);
         assertEq(memory_.getMemoryCount(agentId), 2);
     }
+
+    function testVerifyMemoryRevertsOnInvalidSequence() public {
+        vm.expectRevert("MemoryCommitment: invalid sequence number");
+        memory_.verifyMemory(agentId, 0, bytes32(0));
+    }
 }

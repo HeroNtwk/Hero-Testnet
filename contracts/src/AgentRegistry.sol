@@ -70,6 +70,8 @@ contract AgentRegistry {
         bytes32 permissionScope,
         uint256 validUntil
     ) external onlyAgentOwner(agentId) agentExists(agentId) returns (uint256) {
+        require(agents[agentId].active, "AgentRegistry: agent is inactive");
+        require(delegate != address(0), "AgentRegistry: delegate is zero address");
         require(validUntil > block.timestamp, "AgentRegistry: delegation already expired");
 
         uint256 delegationId = delegationCount[agentId];
