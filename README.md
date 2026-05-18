@@ -1,6 +1,6 @@
 # Hero Network
 
-**Trust Infrastructure for Autonomous Systems on Arbitrum**
+**Trust Infrastructure for Autonomous Systems**
 
 Hero Network provides infrastructure for autonomous AI agents to interact securely, execute confidentially, and maintain verifiable context on Arbitrum.
 
